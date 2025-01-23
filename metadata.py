@@ -2,31 +2,23 @@ import requests
 import json
 import argparse
 
-# Base URL for AWS instance metadata
-METADATA_URL = "http://169.254.169.254/latest/meta-data/"
+# Base URL for the metadata service
+METADATA_URL = "http://localhost:8080/latest/meta-data/"
 
 def fetch_metadata(base_url, key=None):
-    """
-    Fetch metadata from AWS instance metadata service.
-
-    :param base_url: The base URL for metadata.
-    :param key: Specific key to retrieve (optional).
-    :return: Metadata as JSON or specific key value.
-    """
-    if key:
-        url = f"{base_url}{key}"
-    else:
-        url = base_url
+    """Fetch metadata from AWS instance metadata service."""
+    url = f"{base_url}{key}" if key else base_url
 
     try:
         response = requests.get(url, timeout=2)
         response.raise_for_status()
 
-        if response.text.endswith("/"):  # Indicates more nested keys
+        # Check if the response contains subkeys (ends with "/")
+        if response.text.endswith("/"):
             keys = response.text.strip().split("\n")
             metadata = {}
             for k in keys:
-                metadata[k] = fetch_metadata(base_url + k)
+                metadata[k] = fetch_metadata(base_url, key=(key + "/" if key else "") + k)
             return metadata
         else:
             return response.text
@@ -45,6 +37,7 @@ def main():
     else:
         metadata = fetch_metadata(METADATA_URL)
 
+    # Print the metadata in JSON format
     print(json.dumps(metadata, indent=4))
 
 if __name__ == "__main__":
